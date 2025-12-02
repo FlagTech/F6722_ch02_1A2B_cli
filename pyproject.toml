@@ -1,10 +1,7 @@
 [project]
 name = "1a2b-cli"
-version = "0.1.0"
-description = "1A2B 猜數字遊戲 - 經典數字猜謎遊戲的命令列版本"
+version = "1.0.0"
+description = "經典的 1A2B 猜數字遊戲（Bulls and Cows）"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
-
-[project.scripts]
-1a2b = "1a2b:main"

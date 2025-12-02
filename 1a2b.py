@@ -1,123 +1,139 @@
 import random
 import sys
 
-def generate_answer():
-    """產生一個不重複的4位數字作為答案"""
-    digits = random.sample(range(10), 4)
-    return ''.join(map(str, digits))
 
-def check_guess(answer, guess):
-    """檢查猜測結果，返回 A 和 B 的數量"""
-    a_count = 0  # 數字和位置都正確
-    b_count = 0  # 數字正確但位置錯誤
+# ANSI 顏色代碼
+class Colors:
+    GREEN = '\033[92m'      # 綠色 - 用於 A（數字和位置都對）
+    YELLOW = '\033[93m'     # 黃色 - 用於 B（數字對但位置錯）
+    RED = '\033[91m'        # 紅色 - 用於錯誤訊息
+    CYAN = '\033[96m'       # 青色 - 用於提示
+    BOLD = '\033[1m'        # 粗體
+    RESET = '\033[0m'       # 重置顏色
+
+
+def generate_secret_number():
+    """產生一個 4 位不重複的數字"""
+    digits = list(range(10))
+    random.shuffle(digits)
+    return ''.join(map(str, digits[:4]))
+
+
+def calculate_result(secret, guess):
+    """計算 A 和 B 的數量"""
+    a_count = 0
+    b_count = 0
     
     for i in range(4):
-        if guess[i] == answer[i]:
+        if guess[i] == secret[i]:
             a_count += 1
-        elif guess[i] in answer:
+        elif guess[i] in secret:
             b_count += 1
     
     return a_count, b_count
 
-def is_valid_guess(guess):
-    """驗證輸入是否有效（4位數字且不重複）"""
+
+def validate_input(guess):
+    """驗證輸入是否合法"""
     if len(guess) != 4:
-        return False
+        return False, "請輸入 4 位數字！"
+    
     if not guess.isdigit():
-        return False
-    if len(set(guess)) != 4:  # 檢查是否有重複數字
-        return False
-    return True
+        return False, "請只輸入數字！"
+    
+    if len(set(guess)) != 4:
+        return False, "數字不可重複！"
+    
+    return True, ""
+
 
 def play_game():
     """進行一局遊戲"""
-    answer = generate_answer()
+    secret = generate_secret_number()
     max_attempts = 10
-    attempts = 0
     
     print("=" * 50)
-    print("歡迎來到 1A2B 猜數字遊戲！")
-    print("規則：猜一個4位數字（數字不重複）")
-    print("A = 數字和位置都正確")
-    print("B = 數字正確但位置錯誤")
-    print(f"你有 {max_attempts} 次機會")
+    print(f"{Colors.CYAN}{Colors.BOLD}歡迎來到 1A2B 猜數字遊戲！{Colors.RESET}")
+    print("=" * 50)
+    print(f"{Colors.BOLD}遊戲規則：{Colors.RESET}")
+    print("- 電腦已隨機產生 4 個不重複的數字")
+    print(f"- {Colors.GREEN}{Colors.BOLD}A{Colors.RESET} 代表數字和位置都正確")
+    print(f"- {Colors.YELLOW}{Colors.BOLD}B{Colors.RESET} 代表數字正確但位置錯誤")
+    print(f"- 您最多有 {Colors.BOLD}{max_attempts}{Colors.RESET} 次機會")
     print("=" * 50)
     print()
     
-    while attempts < max_attempts:
-        attempts += 1
-        
-        # 取得玩家輸入
+    for attempt in range(1, max_attempts + 1):
         while True:
-            guess = input(f"第 {attempts} 次猜測：").strip()
+            try:
+                guess = input(f"第 {attempt:2d} 次猜測: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\n\n遊戲中斷！")
+                return False
             
-            if not is_valid_guess(guess):
-                print(" " * 13 + "→ 請輸入4個不重複的數字！")
+            valid, error_msg = validate_input(guess)
+            if not valid:
+                print(f"\033[A\r第 {attempt:2d} 次猜測: {guess}  →  {Colors.RED}{error_msg}{Colors.RESET}\033[K")
                 continue
             break
         
-        # 檢查結果
-        a_count, b_count = check_guess(answer, guess)
+        a_count, b_count = calculate_result(secret, guess)
         
-        # ANSI 顏色代碼：綠色代表 A，黃色代表 B
-        green = "\033[92m"
-        yellow = "\033[93m"
-        reset = "\033[0m"
+        # 將結果顯示在同一行的右側（向上移動一行，清除並重新打印）
+        # A 用綠色（完全正確），B 用黃色（部分正確）
+        result = f"{Colors.GREEN}{Colors.BOLD}{a_count}A{Colors.RESET}{Colors.YELLOW}{Colors.BOLD}{b_count}B{Colors.RESET}"
+        print(f"\033[A\r第 {attempt:2d} 次猜測: {guess}  →  {result}\033[K")
         
-        # 向上移動一行，回到輸入的那一行，在同一行顯示結果
-        result = f"  →  {green}{a_count}A{reset}{yellow}{b_count}B{reset}"
-        sys.stdout.write(f"\033[A")  # 向上移動一行
-        sys.stdout.write(f"\r第 {attempts} 次猜測：{guess}{result}\n")
-        sys.stdout.flush()
-        
-        # 檢查是否獲勝
         if a_count == 4:
             print()
-            print("🎉" * 20)
-            print(f"恭喜你！答案就是 {answer}")
-            print(f"你總共猜了 {attempts} 次")
-            print("🎉" * 20)
+            print("=" * 50)
+            print(f"{Colors.GREEN}{Colors.BOLD}🎉 恭喜你！您猜對了！答案是 {secret}{Colors.RESET}")
+            print(f"{Colors.CYAN}您總共猜了 {attempt} 次{Colors.RESET}")
+            print("=" * 50)
             return True
     
-    # 用完所有次數仍未猜中
     print()
-    print("😢" * 20)
-    print(f"很遺憾，你已經用完所有 {max_attempts} 次機會")
-    print(f"正確答案是：{answer}")
-    print("😢" * 20)
+    print("=" * 50)
+    print(f"{Colors.RED}😢 很遺憾，您已用完 {max_attempts} 次機會！{Colors.RESET}")
+    print(f"{Colors.YELLOW}正確答案是：{Colors.BOLD}{secret}{Colors.RESET}")
+    print("=" * 50)
     return False
+
 
 def main():
     """主程式"""
-    print("\n")
-    print("╔" + "═" * 48 + "╗")
-    print("║" + " " * 15 + "1A2B 猜數字遊戲" + " " * 16 + "║")
-    print("╚" + "═" * 48 + "╝")
+    print()
+    print(f"{Colors.CYAN}{Colors.BOLD}╔═══════════════════════════════════════════╗{Colors.RESET}")
+    # 標題：中文字元佔2個顯示寬度，需要調整空格數量
+    # "1A2B 猜數字遊戲 v1.0" 顯示寬度 = 5 + 10 + 5 = 20
+    # 邊框內寬度43，左邊8空格，20字元標題，右邊需要15空格
+    print(f"{Colors.CYAN}{Colors.BOLD}║        1A2B 猜數字遊戲 v1.0               ║{Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD}╚═══════════════════════════════════════════╝{Colors.RESET}")
     print()
     
     while True:
         play_game()
         print()
         
-        # 詢問是否重玩
         while True:
-            replay = input("是否要再玩一局？(Y/N): ").strip().upper()
-            if replay in ['Y', 'N', 'YES', 'NO']:
+            try:
+                play_again = input(f"{Colors.CYAN}是否要再玩一次？(Y/N): {Colors.RESET}").strip().upper()
+            except (KeyboardInterrupt, EOFError):
+                print(f"\n\n{Colors.YELLOW}感謝遊玩！再見！{Colors.RESET}")
+                sys.exit(0)
+            
+            if play_again in ['Y', 'YES', 'N', 'NO']:
                 break
-            print("請輸入 Y 或 N")
+            print(f"{Colors.RED}請輸入 Y 或 N！{Colors.RESET}")
         
-        if replay in ['N', 'NO']:
+        if play_again in ['N', 'NO']:
             print()
-            print("謝謝遊玩！再見！👋")
-            print()
+            print(f"{Colors.YELLOW}感謝遊玩！再見！{Colors.RESET}")
             break
         
-        print("\n" + "─" * 50 + "\n")
+        print()
+
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n\n遊戲已中斷。再見！👋\n")
-        sys.exit(0)
+    main()
 
